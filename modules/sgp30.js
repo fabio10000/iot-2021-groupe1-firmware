@@ -38,6 +38,7 @@ function SGP30(i2c, options) {
   options.addr = options.addr||SGP30_ADDRESS;
   this.need_to_wait = true;
   sgp30 = this;
+  i2c.writeTo(SGP30_ADDRESS, 0x20, 0x03);
   setTimeout(() => sgp30.need_to_wait = false, FIRST_MEASURE_WAIT);
   
   this.w = (reg, data) => {
