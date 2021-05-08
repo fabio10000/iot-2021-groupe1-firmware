@@ -123,6 +123,7 @@ g.prototype.radioTX = function(b, a) {
 g.prototype.loraTX = function(b, a) {
     var d = this.at;
     this.setMAC(!0, function() {
+        // modified here (h(b) => b) to be able to send null bytes
         d.cmd("mac tx uncnf 1 " + b + "\r\n", 2E3, function(c) {
             a("ok" == c ? null : void 0 === c ? "Timeout" : c)
         })
