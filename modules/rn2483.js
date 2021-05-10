@@ -17,8 +17,9 @@ function g(b, a) {
     this.at = require("AT").connect(b);
     this.options.debug && this.at.debug();
     var d = this;
+    // modified to return the payload without parsing it to string
     this.at.registerLine("mac_rx 1", function(c) {
-        d.emit("message", k(c, 9))
+        d.emit("message", c)
     });
     this.macOn = !0
 }
