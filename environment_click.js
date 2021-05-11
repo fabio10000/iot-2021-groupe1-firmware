@@ -1,4 +1,4 @@
-const DELAY = 2 * 60000;
+const DELAY = 3 * 60000;
 var RN2483 = require("rn2483");
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
@@ -25,22 +25,51 @@ function convert_to_payload(json) {
   return payload;
 }
 
-function onInit() {
-  lora.LoRaWAN(
-    "26015E66", // device address
-    "98F821733B69373525EB71C2AFF9AAC7", // nwkSKey
-    "A8B95D9E0A4B7EF4448BCD3A091495A7", // appSKey
-    err => {
-      if (err) throw Error(err);
+function join_lora() {
+  return new Promise(
+    (resolve) => {
+      lora.LoRaWAN(
+        "26015E66", // device address
+        "98F821733B69373525EB71C2AFF9AAC7", // nwkSKey
+        "A8B95D9E0A4B7EF4448BCD3A091495A7", // appSKey
+        err => {
+          if (err) {
+            throw Error(err);
+            // error connection
+          } else {
+            resolve();
+          }
+        }
+      );
     }
-  );
+  )
+}
+
+function send_payload(payload) {
+  lora.loraTX(payload, err => {
+    if (err) {
+      console.log("Error: " + err);
+      if (err == "not_joined") {
+        // if not joined try to join and resend the payload
+        join_lora()
+        .then(() => send_payload(payload))
+        .catch(() => console.log("Unhable to join lora network"));
+      } else if (err == "no_free_ch") {
+        // if no free chan try to resend the payload after a moment
+        setTimeout(send_payload, 5000);
+      }
+    }
+    else console.log("Send payload: " + payload);
+  })
+}
+
+function onInit() {
+  join_lora();
 
   setInterval(() => {
     var data = bme.get_sensor_data();
     var payload = convert_to_payload(data);
-    lora.loraTX(payload, err => {
-      if (err) throw Error(err);
-    })
+    send_payload(payload);
 
     bme.perform_measurement();
   }, DELAY);
