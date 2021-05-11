@@ -1,13 +1,15 @@
+const SGP30 = require("sgp30");
 var RN2483 = require("rn2483");
+
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
 
-const SGP30 = require("sgp30");
 var i2c = new I2C();
 i2c.setup({sda:C9,scl:A8});
 var sgp30 = new SGP30(i2c);
 
 var interval = 2 * 60000;
+var interval_id;
 
 function decimal_to_hex(d, padding) {
   var hex = Number(d).toString(16);
@@ -54,6 +56,8 @@ function parse_payload(payload) {
       if (time < 1) throw new Error("Time must be at least 1 <unit>");
 
       interval = time * unit_mult;
+      clearInterval(interval_id);
+      start_interval(interval);
       console.log(`New interval: ${interval}ms`);
       break;
     case 0x01:
@@ -113,10 +117,8 @@ function send_payload(payload) {
   })
 }
 
-function onInit() {
-  join_lora();
-
-  setInterval(() => {
+function start_interval(inter) {
+  interval_id = setInterval(() => {
     sgp30.get_sensor_data()
     .then((data) => {
       var payload = convert_to_payload(data);
@@ -126,7 +128,13 @@ function onInit() {
       console.log(err);
       err.resolve();
     });
-  }, interval);
+  }, inter);
+}
+
+function onInit() {
+  join_lora();
+
+  start_interval(interval);
 }
 
 save();
