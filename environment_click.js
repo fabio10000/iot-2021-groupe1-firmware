@@ -56,7 +56,7 @@ function send_payload(payload) {
         .catch(() => console.log("Unhable to join lora network"));
       } else if (err == "no_free_ch") {
         // if no free chan try to resend the payload after a moment
-        setTimeout(send_payload, 5000);
+        setTimeout(send_payload, 30000);
       }
     }
     else console.log("Send payload: " + payload);
