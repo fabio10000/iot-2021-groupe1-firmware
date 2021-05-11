@@ -7,7 +7,7 @@ var i2c = new I2C();
 i2c.setup({sda:C9,scl:A8});
 var sgp30 = new SGP30(i2c);
 
-var interval = 60000;
+var interval = 2 * 60000;
 
 function decimal_to_hex(d, padding) {
   var hex = Number(d).toString(16);
@@ -81,24 +81,40 @@ lora.on('message', function(d) {
   parse_payload(d.substring(9));
 });
 
+function join_lora() {
+  return new Promise((resolve) => {
+    lora.LoRaWAN(
+      "2601353C", // device address
+      "8186B549CFA39818E3209E6DE699A1B4", // nwkSKey
+      "03B8F9B04FD3B4C9C0CF7E0FEC7E9837", // appSKey
+      err => {
+        if (err) throw Error(err);
+        else resolve();
+      }
+    );
+  });
+}
+
 function send_payload(payload) {
   lora.loraTX(payload, err => {
     if (err) {
       console.log("Error: " + err);
+      if (err == "not_joined") {
+        // if not joined try to join and resend the payload
+        join_lora()
+        .then(() => send_payload(payload))
+        .catch(() => console.log("Unhable to join lora network"));
+      } else if (err == "no_free_ch") {
+        // if no free chan try to resend the payload after a moment
+        setTimeout(send_payload, 30000);
+      }
     }
     else console.log("Send payload: " + payload);
   })
 }
 
 function onInit() {
-  lora.LoRaWAN(
-    "2601353C", // device address
-    "8186B549CFA39818E3209E6DE699A1B4", // nwkSKey
-    "03B8F9B04FD3B4C9C0CF7E0FEC7E9837", // appSKey
-    err => {
-      if (err) throw Error(err);
-    }
-  );
+  join_lora();
 
   setInterval(() => {
     sgp30.get_sensor_data()
