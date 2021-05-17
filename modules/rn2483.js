@@ -1,145 +1,193 @@
-function h(b) {
-    b = E.toString(b);
-    var a = "",
-        d;
-    for (d in b) a += (b.charCodeAt(d) + 256).toString(16).substr(-2);
-    return a
+/* Copyright (c) 2016 Gordon Williams, Pur3 Ltd. See the file LICENSE for copying permission. */
+
+function toHex(m) {
+m = E.toString(m);
+var hex = "";
+for (var i in m)
+    hex += (m.charCodeAt(i)+256).toString(16).substr(-2);
+return hex;
 }
 
-function k(b, a) {
-    for (var d = ""; a < b.length; a += 2) d += String.fromCharCode(parseInt(b.substr(a, 2), 16));
-    return d
+function fromHex(d, startIdx) {
+var msg = "";
+for (var i=startIdx;i<d.length;i+=2)
+    msg += String.fromCharCode(parseInt(d.substr(i,2),16));
+return msg;
 }
 
-function g(b, a) {
-    this.ser = b;
-    this.options = a || {};
-    this.at = require("AT").connect(b);
-    this.options.debug && this.at.debug();
-    var d = this;
-    // modified to return the payload without parsing it to string
-    this.at.registerLine("mac_rx 1", function(c) {
-        d.emit("message", c)
+/** Connect to a RN2483.
+First argument is the serial device, second is an
+object containing:
+{
+    reset : pin // optional
+    debug : true // optional
+}
+*/
+function RN2483(serial, options) {
+this.ser = serial;
+this.options = options||{};
+this.at = require("AT").connect(serial);
+if (this.options.debug) this.at.debug();
+var lora = this;
+// modified to return the payload without parsing it to string
+this.at.registerLine("mac_rx 1",function(d) {
+    lora.emit("message", d);
+});
+this.macOn = true; // are we in LoRaWAN mode or not?
+}
+
+/// Reset, either via the reset line if defined, or by a serial command
+RN2483.prototype.reset = function(callback) {
+if (this.options.reset) {
+    this.options.reset.reset();
+    this.options.reset.set();
+} else {
+    this.at.cmd("sys reset\r\n",1000,callback);
+}
+if (callback) callback();
+};
+
+/// Call the callback with the RN2483's firmware version
+RN2483.prototype.getVersion = function(callback) {
+this.at.cmd("sys get ver\r\n",1000,function(d) {
+    if (!d) {callback();return;}
+    d = d.split(" ");
+    callback({
+    type : d[0],
+    version : d[1],
+    date : d.slice(2).join(" ")
     });
-    this.macOn = !0
-}
-g.prototype.reset = function(b) {
-    this.options.reset ? (this.options.reset.reset(),
-        this.options.reset.set()) : this.at.cmd("sys reset\r\n", 1E3, b);
-    b && b()
+});
 };
-g.prototype.getVersion = function(b) {
-    this.at.cmd("sys get ver\r\n", 1E3, function(a) {
-        a ? (a = a.split(" "), b({
-            type: a[0],
-            version: a[1],
-            date: a.slice(2).join(" ")
-        })) : b()
-    })
+
+/** Call the callback with the current status as an object.
+ Includes: EUI, VDD, appEUI, devEUI, band, dataRate, rxDelay1 and rxDelay2 */
+RN2483.prototype.getStatus = function(callback) {
+var status = {};
+var at = this.at;
+
+(new Promise(function(resolve) {
+    at.cmd("sys get hweui\r\n",500,resolve);
+})).then(function(d) {
+    status.EUI = d;
+    return new Promise(function(resolve) {
+    at.cmd("sys get vdd\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.VDD = parseInt(d,10)/1000;
+    return new Promise(function(resolve) {
+    at.cmd("mac get appeui\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.appEUI = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get deveui\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.devEUI = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get band\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.band = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get dr\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.dataRate = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get rxdelay1\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.rxDelay1 = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get rxdelay2\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.rxDelay2 = d;
+    return new Promise(function(resolve) {
+    at.cmd("mac get rx2 868\r\n",500,resolve);
+    });
+}).then(function(d) {
+    status.rxFreq2_868 = d;
+    callback(status);
+});
 };
-g.prototype.getStatus = function(b) {
-    var a = {},
-        d = this.at;
-    (new Promise(function(c) {
-        d.cmd("sys get hweui\r\n", 500, c)
-    })).then(function(c) {
-        a.EUI = c;
-        return new Promise(function(e) {
-            d.cmd("sys get vdd\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.VDD = parseInt(c, 10) / 1E3;
-        return new Promise(function(e) {
-            d.cmd("mac get appeui\r\n",
-                500, e)
-        })
-    }).then(function(c) {
-        a.appEUI = c;
-        return new Promise(function(e) {
-            d.cmd("mac get deveui\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.devEUI = c;
-        return new Promise(function(e) {
-            d.cmd("mac get band\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.band = c;
-        return new Promise(function(e) {
-            d.cmd("mac get dr\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.dataRate = c;
-        return new Promise(function(e) {
-            d.cmd("mac get rxdelay1\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.rxDelay1 = c;
-        return new Promise(function(e) {
-            d.cmd("mac get rxdelay2\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.rxDelay2 =
-            c;
-        return new Promise(function(e) {
-            d.cmd("mac get rx2 868\r\n", 500, e)
-        })
-    }).then(function(c) {
-        a.rxFreq2_868 = c;
-        b(a)
-    })
+
+/** configure the LoRaWAN parameters
+ devAddr = 4 byte address for this device as hex - eg. "01234567"
+nwkSKey = 16 byte network session key as hex - eg. "01234567012345670123456701234567"
+appSKey = 16 byte application session key as hex - eg. "01234567012345670123456701234567"
+*/
+RN2483.prototype.LoRaWAN = function(devAddr,nwkSKey,appSKey, callback)
+{
+var at = this.at;
+(new Promise(function(resolve) {
+    at.cmd("mac set devaddr "+devAddr+"\r\n",500,resolve);
+})).then(function() {
+    return new Promise(function(resolve) {
+    at.cmd("mac set nwkskey "+nwkSKey+"\r\n",500,resolve);
+    });
+}).then(function() {
+    return new Promise(function(resolve) {
+    at.cmd("mac set appskey "+appSKey+"\r\n",500,resolve);
+    });
+}).then(function() {
+    return new Promise(function(resolve) {
+    at.cmd("mac join ABP\r\n",2000,resolve);
+    });
+}).then(function(d) {
+    callback((d=="ok")?null:((d===undefined?"Timeout":d)));
+});
 };
-g.prototype.LoRaWAN = function(b, a, d, c) {
-    var e = this.at;
-    (new Promise(function(f) {
-        e.cmd("mac set devaddr " + b + "\r\n", 500, f)
-    })).then(function() {
-        return new Promise(function(f) {
-            e.cmd("mac set nwkskey " + a + "\r\n", 500, f)
-        })
-    }).then(function() {
-        return new Promise(function(f) {
-            e.cmd("mac set appskey " + d + "\r\n", 500, f)
-        })
-    }).then(function() {
-        return new Promise(function(f) {
-            e.cmd("mac join ABP\r\n", 2E3, f)
-        })
-    }).then(function(f) {
-        c("ok" ==
-            f ? null : void 0 === f ? "Timeout" : f)
-    })
+
+/// Set whether the MAC (LoRaWan) is enabled or disabled
+RN2483.prototype.setMAC = function(on, callback) {
+if (this.macOn==on) return callback();
+this.macOn = on;
+this.at.cmd("mac "+(on?"resume":"pause")+"\r\n",500,callback);
 };
-g.prototype.setMAC = function(b, a) {
-    if (this.macOn == b) return a();
-    this.macOn = b;
-    this.at.cmd("mac " + (b ? "resume" : "pause") + "\r\n", 500, a)
+
+/// Transmit a message over the radio (not using LoRaWAN)
+RN2483.prototype.radioTX = function(msg, callback) {
+var at = this.at;
+this.setMAC(false, function() {
+    // convert to hex
+    at.cmd("radio tx "+toHex(msg)+"\r\n",2000,callback);
+});
 };
-g.prototype.radioTX = function(b, a) {
-    var d = this.at;
-    this.setMAC(!1, function() {
-        d.cmd("radio tx " + h(b) + "\r\n", 2E3, a)
-    })
+
+/** Transmit a message (using LoRaWAN). Will call the callback with 'null'
+ on success, or the error message on failure.
+In LoRa, messages are received right after data is transmitted - if
+a message was received, the 'message' event will be fired, which 
+can be received if you added a handler as follows:
+lora.on('message', function(data) { ... });
+*/
+RN2483.prototype.loraTX = function(msg, callback) {
+var at = this.at;
+this.setMAC(true, function() {
+    // modified here (toHex(msg) => msg) to be able to send null bytes
+    at.cmd("mac tx uncnf 1 "+msg+"\r\n",2000,function(d) {
+    callback((d=="ok")?null:((d===undefined?"Timeout":d)));
+    });
+});
 };
-g.prototype.loraTX = function(b, a) {
-    var d = this.at;
-    this.setMAC(!0, function() {
-        // modified here (h(b) => b) to be able to send null bytes
-        d.cmd("mac tx uncnf 1 " + b + "\r\n", 2E3, function(c) {
-            a("ok" == c ? null : void 0 === c ? "Timeout" : c)
-        })
-    })
+
+
+/** Receive a message from the radio (not using LoRaWAN) with the given timeout
+ in miliseconds. If the timeout is reached, callback will be called with 'undefined' */
+RN2483.prototype.radioRX = function(timeout, callback) {
+var at = this.at;
+this.setMAC(false, function() {
+    at.cmd("radio set wdt "+timeout+"\r\n", 500, function() {
+    at.cmd("radio rx 0\r\n", timeout+500, function cb(d) {
+        if (d=="ok") return cb;
+        if (d===undefined || d.substr(0,10)!="radio_rx  ") { callback(); return; }
+        callback(fromHex(d,10));
+    });
+    });
+});
 };
-g.prototype.radioRX = function(b, a) {
-    var d = this.at;
-    this.setMAC(!1,
-        function() {
-            d.cmd("radio set wdt " + b + "\r\n", 500, function() {
-                d.cmd("radio rx 0\r\n", b + 500, function f(e) {
-                    if ("ok" == e) return f;
-                    void 0 === e || "radio_rx  " != e.substr(0, 10) ? a() : a(k(e, 10))
-                })
-            })
-        })
-};
-exports = g
+
+exports = RN2483;
