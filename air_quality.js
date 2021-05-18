@@ -1,5 +1,6 @@
-const SGP30 = require("sgp30");
-var RN2483 = require("rn2483");
+// minified url to local modules on github repo
+const SGP30 = require("https://git.io/JsgXu");
+var RN2483 = require("https://git.io/JsgXY");
 
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});

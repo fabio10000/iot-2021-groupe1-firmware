@@ -1,5 +1,6 @@
 const DELAY = 3 * 60000;
-var RN2483 = require("rn2483");
+// minified url to local modules on github repo
+var RN2483 = require("https://git.io/JsgXY");
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
 var i2c = new I2C();
