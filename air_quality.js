@@ -85,17 +85,39 @@ lora.on('message', function(d) {
   parse_payload(d.substring(9));
 });
 
-function join_lora() {
-  return new Promise((resolve) => {
-    lora.LoRaWAN(
-      "2601353C", // device address
-      "8186B549CFA39818E3209E6DE699A1B4", // nwkSKey
-      "03B8F9B04FD3B4C9C0CF7E0FEC7E9837", // appSKey
-      err => {
-        if (err) throw Error(err);
-        else resolve();
+lora.on('connexion', function(d) {
+  if (d == 'denied') {
+    join_lora();
+  } else if (d == 'accepted') {
+    console.log("Starting measures")
+    start_interval(interval);
+  }
+});
+
+function init_lora() {
+  lora.reset(function() {
+    lora.setOtaaParams(
+      "70B3D57ED003EB65",
+      "8B8DCD2946A9E230E2FB07A8632BD32F",
+      (err) => {
+        if (!err) {
+          join_lora();
+        } else {
+          console.log("error setting params: ", err)
+        }
       }
-    );
+    )
+  })
+}
+
+function join_lora() {
+  lora.connectOtaa()
+  .catch((err) => {
+    console.log("Error: ", err)
+    if (err.indexOf("no_free_ch") != -1) {
+      console.log("retrying to connect");
+      setTimeout(join_lora, 30000);
+    }
   });
 }
 
@@ -103,12 +125,7 @@ function send_payload(payload) {
   lora.loraTX(payload, err => {
     if (err) {
       console.log("Error: " + err);
-      if (err == "not_joined") {
-        // if not joined try to join and resend the payload
-        join_lora()
-        .then(() => send_payload(payload))
-        .catch(() => console.log("Unhable to join lora network"));
-      } else if (err == "no_free_ch") {
+      if (err == "no_free_ch") {
         // if no free chan try to resend the payload after a moment
         setTimeout(() => send_payload(payload), 30000);
       }
@@ -126,15 +143,12 @@ function start_interval(inter) {
     })
     .catch((err) => {
       console.log(err);
-      err.resolve();
     });
   }, inter);
 }
 
 function onInit() {
   join_lora();
-
-  start_interval(interval);
 }
 
 save();

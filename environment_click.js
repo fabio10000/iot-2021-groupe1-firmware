@@ -25,36 +25,53 @@ function convert_to_payload(json) {
   return payload;
 }
 
-function join_lora() {
-  return new Promise(
-    (resolve) => {
-      lora.LoRaWAN(
-        "26015E66", // device address
-        "98F821733B69373525EB71C2AFF9AAC7", // nwkSKey
-        "A8B95D9E0A4B7EF4448BCD3A091495A7", // appSKey
-        err => {
-          if (err) {
-            throw Error(err);
-            // error connection
-          } else {
-            resolve();
-          }
+lora.on('connexion', function(d) {
+  if (d == 'denied') {
+    join_lora();
+  } else if (d == 'accepted') {
+    console.log("Starting measures")
+    setInterval(() => {
+      var data = bme.get_sensor_data();
+      var payload = convert_to_payload(data);
+      send_payload(payload);
+  
+      bme.perform_measurement();
+    }, DELAY);
+  }
+});
+
+function init_lora() {
+  lora.reset(function() {
+    lora.setOtaaParams(
+      "70B3D57ED003EB65",
+      "AB519DEEA485A5CEE5232E1FA109E730",
+      (err) => {
+        if (!err) {
+          join_lora();
+        } else {
+          console.log("error setting params: ", err)
         }
-      );
+      }
+    )
+  })
+}
+
+function join_lora() {
+  lora.connectOtaa()
+  .catch((err) => {
+    console.log("Error: ", err)
+    if (err.indexOf("no_free_ch") != -1) {
+      console.log("retrying to connect");
+      setTimeout(join_lora, 30000);
     }
-  )
+  });
 }
 
 function send_payload(payload) {
   lora.loraTX(payload, err => {
     if (err) {
       console.log("Error: " + err);
-      if (err == "not_joined") {
-        // if not joined try to join and resend the payload
-        join_lora()
-        .then(() => send_payload(payload))
-        .catch(() => console.log("Unhable to join lora network"));
-      } else if (err == "no_free_ch") {
+      if (err == "no_free_ch") {
         // if no free chan try to resend the payload after a moment
         setTimeout(() => send_payload(payload), 30000);
       }
@@ -65,14 +82,6 @@ function send_payload(payload) {
 
 function onInit() {
   join_lora();
-
-  setInterval(() => {
-    var data = bme.get_sensor_data();
-    var payload = convert_to_payload(data);
-    send_payload(payload);
-
-    bme.perform_measurement();
-  }, DELAY);
 }
 
 save();

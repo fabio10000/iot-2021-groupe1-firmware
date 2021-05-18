@@ -33,6 +33,14 @@ function RN2483(serial, options) {
   this.at.registerLine("mac_rx 1",function(d) {
     lora.emit("message", d);
   });
+  // check if connection is accepted or denied
+  this.at.registerLine("accepted", function(d) {
+    lora.emit("connexion", d);
+  })
+  this.at.registerLine("denied", function(d) {
+    lora.emit("connexion", d);
+  })
+
   this.macOn = true; // are we in LoRaWAN mode or not?
 }
 
@@ -139,6 +147,45 @@ RN2483.prototype.LoRaWAN = function(devAddr,nwkSKey,appSKey, callback) {
     callback((d=="ok")?null:((d===undefined?"Timeout":d)));
   });
 };
+
+/**
+ * configure the otaa params for otaa connection
+ * @param {bytes} appEUI 
+ * @param {bytes} appKey 
+ */
+RN2483.prototype.setOtaaParams = function(appEUI, appKey, callback) {
+  var at = this.at;
+  (new Promise(function(resolve) {
+    at.cmd("mac set appeui "+appEUI+"\r\n", 800, resolve);
+  })).then(function() {
+    return new Promise((function(resolve) {
+      at.cmd("mac set appkey "+appKey+"\r\n", 800, resolve);
+    }));
+  }).then(function() {
+    return new Promise((function(resolve) {
+      at.cmd("mac save\r\n", 1500, resolve);
+    }));
+  }).then(function(d) {
+    callback((d=="ok")?null:((d===undefined?"Timeout":d)));
+  })
+}
+
+RN2483.prototype.connectOtaa = function() {
+  var at = this.at;
+  return new Promise(function(resolve, reject) {
+    at.cmd("mac join otaa\r\n", 8000, function cb(d) {
+      if (d===undefined) {
+        reject("Timeout");
+      } else {
+        if (d.indexOf("ok") != -1) {
+          resolve("ok");
+        } else {
+          reject(d);
+        }
+      }
+    })
+  })
+}
 
 /// Set whether the MAC (LoRaWan) is enabled or disabled
 RN2483.prototype.setMAC = function(on, callback) {
