@@ -60,7 +60,7 @@ function int_to_string_hex(value, nb_bytes, signed = false) {
     return hex
 }
 
-function decode_payload(payload) {
+exports.decode_payload = function (payload) {
     result = {}
     while(payload.length > 0) {
         var code = parseInt(payload.slice(0,4), 16)
@@ -94,7 +94,7 @@ function encode_pair(code_hex, code_info, value) {
     )
 }
 
-function encode_payload(payload) {
+exports.encode_payload = function (payload) {
     var result = ""
     for (const [key, value] of Object.entries(payload)) {
         var code_info = CODES[key]
