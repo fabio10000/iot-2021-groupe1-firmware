@@ -1,8 +1,7 @@
 // minified url to local modules on github repo
 const SGP30 = require("https://git.io/JsgXu");
 const RN2483 = require("https://git.io/JsgXY");
-// todo ajouter le lien sur le repo pour les problèmes de chargement
-require("parser")
+const Parser = require("parser"); //todo require from github
 
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
@@ -15,7 +14,7 @@ var interval = 2 * 60000;
 var interval_id;
 
 function convert_to_payload(json) {
-  var payload = encode_payload({
+  var payload = Parser.encode_payload({
     "3325": [
       json.co2,
       json.tvoc,
@@ -28,7 +27,7 @@ function convert_to_payload(json) {
 }
 
 lora.on('message', function(d) {
-  var data = decode_payload(d)
+  var data = Parser.decode_payload(d)
 
   //todo vérifier la valeur choisie
   if (data["3324"] > 12) {
