@@ -71,8 +71,9 @@ function decode_payload(payload) {
         var hex_value = payload.slice(0, val_length)
         var value = string_hex_to_int(hex_value, code_info.sign) * code_info.transform
         payload = payload.slice(val_length)
-        console.log(value)
-        result[code] = value
+
+        if (!(code in result)) result[code] = []
+        result[code].push(value)
     }
     return result
 }
@@ -81,13 +82,17 @@ function encode_payload(payload) {
     var result = ""
     for (const [key, value] of Object.entries(payload)) {
         var code_info = CODES[key]
-        result += int_to_string_hex(parseInt(key), 2)
+        var code_hex = int_to_string_hex(parseInt(key), 2)
         
-        result += int_to_string_hex(
-            value / code_info.transform, 
-            code_info.bytes,
-            code_info.sign
-        )
+        for (i = 0; i < value.length; ++i) {
+            result += code_hex
+
+            result += int_to_string_hex(
+                value[i] / code_info.transform, 
+                code_info.bytes,
+                code_info.sign
+            )
+        }
     }
     return result
 }
