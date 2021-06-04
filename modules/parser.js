@@ -72,10 +72,26 @@ function decode_payload(payload) {
         var value = string_hex_to_int(hex_value, code_info.sign) * code_info.transform
         payload = payload.slice(val_length)
 
-        if (!(code in result)) result[code] = []
-        result[code].push(value)
+        if (code in result) {
+            if (!Array.isArray(result[code])) {
+                var tmp = result[code]
+                result[code] = []
+                result[code].push(tmp)
+            }
+            result[code].push(value)
+        } else {
+            result[code] = value
+        }
     }
     return result
+}
+
+function encode_pair(code_hex, code_info, value) {
+    return code_hex + int_to_string_hex(
+        value / code_info.transform, 
+        code_info.bytes,
+        code_info.sign
+    )
 }
 
 function encode_payload(payload) {
@@ -84,14 +100,12 @@ function encode_payload(payload) {
         var code_info = CODES[key]
         var code_hex = int_to_string_hex(parseInt(key), 2)
         
-        for (i = 0; i < value.length; ++i) {
-            result += code_hex
-
-            result += int_to_string_hex(
-                value[i] / code_info.transform, 
-                code_info.bytes,
-                code_info.sign
-            )
+        if (Array.isArray(value)) {
+            for (i = 0; i < value.length; ++i) {
+                result += encode_pair(code_hex, code_info, value[i])
+            }
+        } else {
+            result += encode_pair(code_hex, code_info, value)
         }
     }
     return result
