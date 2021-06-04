@@ -1,7 +1,7 @@
 const DELAY = 3 * 60000;
 // minified url to local modules on github repo
 const RN2483 = require("https://git.io/JsgXY");
-const Parser = require("parser"); //todo require from github
+const Parser = require("https://git.io/JGMMf");
 
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
