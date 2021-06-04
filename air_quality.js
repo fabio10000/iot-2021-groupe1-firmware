@@ -1,6 +1,8 @@
 // minified url to local modules on github repo
 const SGP30 = require("https://git.io/JsgXu");
-var RN2483 = require("https://git.io/JsgXY");
+const RN2483 = require("https://git.io/JsgXY");
+// todo ajouter le lien sur le repo pour les problèmes de chargement
+require("parser")
 
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
@@ -12,78 +14,30 @@ var sgp30 = new SGP30(i2c);
 var interval = 2 * 60000;
 var interval_id;
 
-function decimal_to_hex(d, padding) {
-  var hex = Number(d).toString(16);
-  padding = typeof (padding) === "undefined" || padding === null ? padding = 2 : padding;
-
-  while (hex.length < padding) {
-      hex = "0" + hex;
-  }
-
-  return hex;
-}
-
 function convert_to_payload(json) {
-  var payload = decimal_to_hex(json.co2, 4);
-  payload += decimal_to_hex(json.tvoc, 4);
-  payload += decimal_to_hex(json.h2, 4);
-  payload += decimal_to_hex(json.eth, 4);
+  var payload = encode_payload({
+    "3325": [
+      json.co2,
+      json.tvoc,
+      json.h2,
+      json.eth
+    ]
+  })
 
   return payload;
 }
 
-function parse_payload(payload) {
-  var op_code = string_to_hex(payload.substring(0,2))
-  
-  switch(op_code) {
-    case 0x00:
-      // change interval
-      var payload_data = string_to_hex(payload.substring(2));
-      var time = payload_data >> 2;
-      var unit = payload_data & 0x03;
-      var unit_mult = 1000;
-      switch(unit) {
-        case 2:
-          unit_mult *= 24
-        case 1:
-          unit_mult *= 60
-        case 0:
-          unit_mult *= 60
-          break;
-        default:
-          throw new Error("Unknown unit");
-      }
-
-      if (time < 1) throw new Error("Time must be at least 1 <unit>");
-
-      interval = time * unit_mult;
-      clearInterval(interval_id);
-      start_interval(interval);
-      console.log(`New interval: ${interval}ms`);
-      break;
-    case 0x01:
-      // get temp from node 2
-      var temp = string_to_hex(payload.substring(2,4));
-      
-      if (temp > 28) {
-        digitalWrite(E12, 1);
-        console.log("it's hot turned LED on");
-      } else {
-        digitalWrite(E12, 0);
-        console.log("it's cold turned LED off");
-      }
-      break;
-    default:
-      throw new Error("Unknown op_code");
-  }
-}
-
-function string_to_hex(text) {
-	return Number(`0x${text}`)
-}
-
 lora.on('message', function(d) {
-  parse_payload(d.substring(9));
+  var data = decode_payload(d)
+
+  //todo vérifier la valeur choisie
+  if (data["3324"] > 12) {
+    digitalWrite(E12, 1);
+    digitalWrite(E15, 0);
+  } else {
+    digitalWrite(E15, 1);
+    digitalWrite(E12, 0);
+  }
 });
 
 lora.on('connexion', function(d) {
