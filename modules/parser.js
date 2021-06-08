@@ -1,4 +1,4 @@
-const CODES = {
+var CODES = {
     "3302": {
         bytes: 1,
         sign: "unsigned",
@@ -38,7 +38,7 @@ function string_hex_to_int(string, signed = false) {
         var sign = val >> bits
 
         if (sign == 1) {
-            val ^= 2**bits
+            val ^= Math.pow(2, bits)
             val *= -1
         }
     }
@@ -49,7 +49,7 @@ function int_to_string_hex(value, nb_bytes, signed = false) {
     var val = value
     if (signed == "signed-msb" && val < 0) {
         val *= -1
-        val ^= 2**(nb_bytes * 8 - 1)
+        val ^= Math.pow(2, nb_bytes * 8 - 1)
     }
 
     var hex = Number(val).toString(16)
