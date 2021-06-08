@@ -27,10 +27,10 @@ function convert_to_payload(json) {
 }
 
 lora.on('message', function(d) {
-  var data = Parser.decode_payload(d)
+  var val = parseInt(d)
 
-  //todo vérifier la valeur choisie
-  if (data["3324"] > 12) {
+  //todo: check val
+  if (val > 12) {
     digitalWrite(E12, 1);
     digitalWrite(E15, 0);
   } else {

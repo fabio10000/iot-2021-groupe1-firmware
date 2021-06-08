@@ -31,7 +31,7 @@ var CODES = {
     }
 }
 
-function string_hex_to_int(string, signed = false) {
+function string_hex_to_int(string, signed) {
     var val = parseInt(string, 16)
     if (signed == "signed-msb") {
         var bits = string.length * 4 - 1
@@ -45,7 +45,7 @@ function string_hex_to_int(string, signed = false) {
     return val;
 }
 
-function int_to_string_hex(value, nb_bytes, signed = false) {
+function int_to_string_hex(value, nb_bytes, signed) {
     var val = value
     if (signed == "signed-msb" && val < 0) {
         val *= -1
@@ -96,10 +96,11 @@ function encode_pair(code_hex, code_info, value) {
 
 exports.encode_payload = function (payload) {
     var result = ""
-    for (const [key, value] of Object.entries(payload)) {
-        var code_info = CODES[key]
-        var code_hex = int_to_string_hex(parseInt(key), 2)
-        
+    console.log(payload)
+    for (var property in payload) {
+        var code_info = CODES[property]
+        var code_hex = int_to_string_hex(parseInt(property), 2, false)
+        var value = payload[property]
         if (Array.isArray(value)) {
             for (i = 0; i < value.length; ++i) {
                 result += encode_pair(code_hex, code_info, value[i])

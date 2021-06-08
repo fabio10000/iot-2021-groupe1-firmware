@@ -9,22 +9,26 @@ var i2c = new I2C();
 i2c.setup({sda:C9,scl:A8});
 var bme = require("BME680").connectI2C(i2c, {addr:0x77});
 
+function round(value, precision) {
+  var multiplier = Math.pow(10, precision || 0);
+  return Math.round(value * multiplier) / multiplier;
+}
+
 function convert_to_payload(json) {
-  // todo: vérifier les arrondis
   var payload = Parser.encode_payload({
-    "3303": json.temperature,
-    "3304": json.humidity,
-    "3315": json.pressure
+    "3303": round(json.temperature,1),
+    "3304": round(json.humidity,0),
+    "3315": round(json.pressure,1)
   })
 
   return payload;
 }
 
 lora.on('message', function(d) {
-  var data = Parser.decode_payload(d)
-
-  //todo vérifier la valeur choisie
-  if (data["3302"] > 12) {
+  var val = parseInt(d)
+  
+  //todo: check val
+  if (val > 12) {
     digitalWrite(E12, 1);
     digitalWrite(E15, 0);
   } else {
