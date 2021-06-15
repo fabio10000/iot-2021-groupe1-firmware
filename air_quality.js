@@ -1,7 +1,7 @@
 // minified url to local modules on github repo
 const SGP30 = require("https://git.io/JsgXu");
 const RN2483 = require("https://git.io/JsgXY");
-const Parser = require("https://git.io/JGMMf");
+const Parser = require("parser");
 
 Serial3.setup(57600/25*8, { tx:D8, rx:D9 });
 var lora = new RN2483(Serial3, {reset: E13, debug: true});
@@ -27,10 +27,9 @@ function convert_to_payload(json) {
 }
 
 lora.on('message', function(d) {
-  var val = parseInt(d)
+  var val = parseInt(d.substring(9), 16)
 
-  //todo: check val
-  if (val > 12) {
+  if (val > 3500) {
     digitalWrite(E12, 1);
     digitalWrite(E15, 0);
   } else {
