@@ -27,7 +27,11 @@ function convert_to_payload(json) {
 lora.on('message', function(d) {
   var val = parseInt(d.substring(9), 16)
   
-  if (val > 0) {
+  if (val == NaN) {
+    console.log("Unknown value received");
+    digitalWrite(E12, 0);
+    digitalWrite(E15, 0);
+  } else if (val > 0) {
     digitalWrite(E12, 1);
     digitalWrite(E15, 0);
   } else {

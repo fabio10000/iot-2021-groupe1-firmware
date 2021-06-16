@@ -98,15 +98,17 @@ exports.encode_payload = function (payload) {
     var result = ""
     console.log(payload)
     for (var property in payload) {
-        var code_info = CODES[property]
-        var code_hex = int_to_string_hex(parseInt(property), 2, false)
-        var value = payload[property]
-        if (Array.isArray(value)) {
-            for (i = 0; i < value.length; ++i) {
-                result += encode_pair(code_hex, code_info, value[i])
+        if (property in CODES) {
+            var code_info = CODES[property]
+            var code_hex = int_to_string_hex(parseInt(property), 2, false)
+            var value = payload[property]
+            if (Array.isArray(value)) {
+                for (i = 0; i < value.length; ++i) {
+                    result += encode_pair(code_hex, code_info, value[i])
+                }
+            } else {
+                result += encode_pair(code_hex, code_info, value)
             }
-        } else {
-            result += encode_pair(code_hex, code_info, value)
         }
     }
     return result
